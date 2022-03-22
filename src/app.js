@@ -112,17 +112,26 @@ app.post('/jobs/:job_id/pay', getProfile, async (req, res) => {
           'msg': 'Your balance is not enough'
         });
       }
-      let newBalance = client.get('balance') - job.get('price');
-      await client.update({
-        balance: newBalance
-      });
-      newBalance = contractor.get('balance') + job.get('price');
-      await contractor.update({
-        balance: newBalance
-      });
-      res.json({
-        'msg': 'Successfully paid'
-      });
+      let transaction;
+      try {
+        transaction = await sequelize.transaction();
+        let newBalance = client.get('balance') - job.get('price');
+        await client.update({
+          balance: newBalance
+        }, {transaction});
+        newBalance = contractor.get('balance') + job.get('price');
+        await contractor.update({
+          balance: newBalance
+        }, {transaction});
+        res.json({
+          'msg': 'Successfully paid'
+        });
+      } catch (error) {
+        console.log('error');
+        if (transaction) {
+          await transaction.rollback();
+        }
+      }
     } else {
       res.json({
         'msg': 'No proper job'
@@ -134,12 +143,52 @@ app.post('/jobs/:job_id/pay', getProfile, async (req, res) => {
 app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
   const {userId} = req.params;
   const {Job, Contract, Profile} = req.app.get('models');
-  const amount = req.get('amount');
-  const job = await Job.findAll({
+  const {amount} = req.body;
+  const jobToPay = await Job.sum('price', {
     where: {
-      pa
-    }
+      paid: {
+        [Op.not]: true
+      }
+    },
+    include: {
+      model: Contract,
+      where: {
+        [Op.and]: [
+          {
+            status: {
+              [Op.ne]: 'terminated'
+            }
+          },
+          {ClientId: userId}
+        ]
+      }
+    },
   });
+  if (amount > jobToPay * 0.25) {
+    res.json({
+      msg: 'Can not deposit money more than 25% to pay'
+    })
+  } else {
+    const clientProfile = await Profile.findOne({
+      where: {id: userId}
+    })
+    let transaction;
+    try {
+      transaction = await sequelize.transaction();
+      const newBalance = clientProfile.get('balance') + amount;
+      await clientProfile.update({
+        balance: newBalance
+      }, {transaction})
+      res.json({
+        msg: 'Deposit succeed'
+      })
+    } catch (error) {
+      console.log('error');
+      if (transaction) {
+        await transaction.rollback();
+      }
+    }
+  }
 });
 
 app.get('/admin/best-profession', getProfile, async (req, res) => {
