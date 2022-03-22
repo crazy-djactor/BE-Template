@@ -1,6 +1,6 @@
 const getProfile = async (req, res, next) => {
   const {Profile} = req.app.get('models');
-  const {Contract} = req.app.get('models')
+  console.log('middleware')
   const profile = await Profile.findOne({
       where: {id: req.get('profile_id') || 0}
   })
