@@ -123,6 +123,7 @@ app.post('/jobs/:job_id/pay', getProfile, async (req, res) => {
         await contractor.update({
           balance: newBalance
         }, {transaction});
+        await transaction.commit();
         res.json({
           'msg': 'Successfully paid'
         });
@@ -131,11 +132,12 @@ app.post('/jobs/:job_id/pay', getProfile, async (req, res) => {
         if (transaction) {
           await transaction.rollback();
         }
+        res.status(500).end();
       }
     } else {
-      res.json({
+      res.status(404).json({
         'msg': 'No proper job'
-      })
+      });
     }
   }
 });
@@ -165,7 +167,7 @@ app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
     },
   });
   if (amount > jobToPay * 0.25) {
-    res.json({
+    res.status(400).json({
       msg: 'Can not deposit money more than 25% to pay'
     })
   } else {
@@ -179,6 +181,7 @@ app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
       await clientProfile.update({
         balance: newBalance
       }, {transaction})
+      await transaction.commit();
       res.json({
         msg: 'Deposit succeed'
       })
@@ -187,6 +190,9 @@ app.post('/balances/deposit/:userId', getProfile, async (req, res) => {
       if (transaction) {
         await transaction.rollback();
       }
+      res.status(500).json({
+        msg: 'Err'
+      })
     }
   }
 });

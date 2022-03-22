@@ -50,3 +50,21 @@ describe('best-client', () => {
     expect(res.body).toEqual(best_clients)
   })
 })
+
+describe('pay_jobs', () => {
+  it('/jobs/:id/pay', async () => {
+    const res = await request(app).post('/jobs/2/pay')
+      .set('profile_id', 1)
+      .send();
+    expect(res.statusCode).toEqual(200)
+  })
+})
+
+describe('deposit', () => {
+  it('/balance/deposit/:id', async () => {
+    const res = await request(app).post('/balances/deposit/1')
+      .set('profile_id', 1)
+      .send({amount: 5});
+    expect(res.statusCode).toEqual(200)
+  })
+})
